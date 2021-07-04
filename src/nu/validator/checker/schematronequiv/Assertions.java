@@ -385,8 +385,14 @@ public class Assertions extends Checker {
         JAVASCRIPT_MIME_TYPES.add("text/x-javascript");
     }
 
+    private static final String[] ARIA_HIDDEN_NOT_ALLOWED_ELEMENTS = { "base",
+            "col", "colgroup", "head", "html", "link", "map", "meta",
+            "noscript", "param", "picture", "script", "slot", "source", "style",
+            "template", "title", "track" };
+
     private static final String[] INTERACTIVE_ELEMENTS = { "a", "button",
-            "details", "embed", "iframe", "label", "select", "textarea" };
+            "details", "dialog", "embed", "iframe", "label", "select",
+            "textarea" };
 
     private static final String[] INTERACTIVE_ROLES = { "button", "checkbox",
             "combobox", "grid", "gridcell", "listbox", "menu", "menubar",
@@ -584,6 +590,7 @@ public class Assertions extends Checker {
         ELEMENTS_WITH_IMPLICIT_ROLE.put("dd", "definition");
         ELEMENTS_WITH_IMPLICIT_ROLE.put("details", "group");
         ELEMENTS_WITH_IMPLICIT_ROLE.put("dialog", "dialog");
+        ELEMENTS_WITH_IMPLICIT_ROLE.put("dfn", "term");
         ELEMENTS_WITH_IMPLICIT_ROLE.put("dt", "term");
         ELEMENTS_WITH_IMPLICIT_ROLE.put("fieldset", "group");
         ELEMENTS_WITH_IMPLICIT_ROLE.put("figure", "figure");
@@ -658,10 +665,12 @@ public class Assertions extends Checker {
     private static final Set<String> ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY = new HashSet<>();
 
     static {
+        ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("colspan");
         ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("disabled");
         ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("hidden");
         ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("readonly");
         ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("required");
+        ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.add("rowspan");
     }
 
     private static final String h1WarningMessage = "Consider using the"
@@ -1149,6 +1158,9 @@ public class Assertions extends Checker {
 
     private boolean isAriaLabelMisuse(String ariaLabel, String localName,
             String role, Attributes atts) {
+        if (ariaLabel == "") {
+            return false;
+        }
         if (ariaLabel == null) {
             return false;
         }
@@ -1158,26 +1170,45 @@ public class Assertions extends Checker {
         if (isLabelableElement(localName, atts)) {
             return false;
         }
-        // https://developer.paciellogroup.com/blog/2017/07/short-note-on-aria-label-aria-labelledby-and-aria-describedby/
-        if ("main" == localName //
-                || "nav" == localName //
-                || "table" == localName //
-                || "td" == localName //
-                || "th" == localName //
-                || "aside" == localName //
-                || "header" == localName //
-                || "footer" == localName //
-                || "section" == localName //
+        // https://html5accessibility.com/stuff/2020/11/07/not-so-short-note-on-aria-label-usage-big-table-edition/
+        if (//
+                // "a" == localName // INTERACTIVE_ELEMENTS
+                "area" == localName // https://github.com/validator/validator/issues/775#issuecomment-494455608
                 || "article" == localName //
-                || "form" == localName //
-                || "img" == localName //
+                || "aside" == localName //
                 || "audio" == localName //
-                || "video" == localName //
-                // https://github.com/validator/validator/issues/775#issuecomment-494455608
-                || "area" == localName //
+                // "button" == localName // INTERACTIVE_ELEMENTS
+                // "details" == localName // INTERACTIVE_ELEMENTS
+                // "dialog" == localName // INTERACTIVE_ELEMENTS
+                || "dl" == localName //
                 || "fieldset" == localName //
-                || "summary" == localName //
                 || "figure" == localName //
+                || "footer" == localName //
+                || "form" == localName //
+                || "h1" == localName //
+                || "h2" == localName //
+                || "h3" == localName //
+                || "h4" == localName //
+                || "h5" == localName //
+                || "h6" == localName //
+                || "header" == localName //
+                || "hr" == localName //
+                // "iframe" == localName // INTERACTIVE_ELEMENTS
+                || "img" == localName // https://github.com/validator/validator/issues/775
+                // "input" == localName // isLabelableElement
+                || "main" == localName //
+                // "meter" == localName // isLabelableElement
+                || "nav" == localName //
+                || "ol" == localName //
+                // "progress" == localName // isLabelableElement
+                || "section" == localName //
+                // "select" == localName // isLabelableElement
+                || "summary" == localName // https://github.com/validator/validator/issues/775#issuecomment-494459220
+                || "svg" == localName //
+                || "table" == localName //
+                // "textarea" == localName // INTERACTIVE_ELEMENTS
+                || "video" == localName //
+                || "ul" == localName //
         ) {
             return false;
         }
@@ -1270,6 +1301,8 @@ public class Assertions extends Checker {
     private boolean hasAutofocus;
 
     private boolean hasTopLevelH1;
+
+    private boolean hasAncestorTableIsRoleTableGridOrTreeGrid = false;
 
     private int numberOfTemplatesDeep = 0;
 
@@ -1449,6 +1482,11 @@ public class Assertions extends Checker {
         openMediaElements.remove(node);
         if ("http://www.w3.org/1999/xhtml" == uri) {
             if ("figure" == localName) {
+                if (node.hasFigcaptionContent() && (node.role != null)) {
+                    err("A \u201Cfigure\u201D element with a"
+                            + " \u201Cfigcaption\u201D descendant must not"
+                            + " have a \u201Crole\u201D attribute.");
+                }
                 if ((node.needsFigcaption() && !node.hasFigcaptionContent())
                         || node.hasTextNode() || node.hasEmbeddedContent()) {
                     for (Locator imgLocator : node.getImagesLackingAlt()) {
@@ -1628,6 +1666,7 @@ public class Assertions extends Checker {
         hasContentTypePragma = false;
         hasAutofocus = false;
         hasTopLevelH1 = false;
+        hasAncestorTableIsRoleTableGridOrTreeGrid = false;
         numberOfTemplatesDeep = 0;
     }
 
@@ -1710,7 +1749,8 @@ public class Assertions extends Checker {
             boolean tabindex = false;
             boolean languageJavaScript = false;
             boolean typeNotTextJavaScript = false;
-            boolean hasAriaAttributes = false;
+            boolean hasAriaAttributesOtherThanAriaHidden = false;
+            boolean isCustomElement = false;
             String xmlLang = null;
             String lang = null;
             String id = null;
@@ -1719,10 +1759,54 @@ public class Assertions extends Checker {
             int len = atts.getLength();
             for (int i = 0; i < len; i++) {
                 String attUri = atts.getURI(i);
+                boolean isEmptyAtt = "".equals(atts.getValue(i));
                 if (attUri.length() == 0) {
                     String attLocal = atts.getLocalName(i);
-                    if (attLocal.startsWith("aria-")) {
-                        hasAriaAttributes = true;
+                    if ("aria-hidden".equals(attLocal) && !isEmptyAtt) {
+                        if (Arrays.binarySearch(
+                                ARIA_HIDDEN_NOT_ALLOWED_ELEMENTS,
+                                localName) >= 0) {
+                            err("The \u201Caria-hidden\u201D attribute must not"
+                                    + " be specified on the \u201C" + localName
+                                    + "\u201D element.");
+                        } else if ("input" == localName
+                                && "hidden".equals(atts.getValue("", "type"))) {
+                            err("The \u201Caria-hidden\u201D attribute must not"
+                                    + " be specified on an \u201Cinput\u201D"
+                                    + " element whose \u201Ctype\u201D"
+                                    + " attribute has the value"
+                                    + " \u201Chidden\u201D.");
+                        }
+                    } else if (attLocal.startsWith("aria-") && !isEmptyAtt) {
+                        hasAriaAttributesOtherThanAriaHidden = true;
+                    }
+                    if (ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.contains(
+                            attLocal) && !isEmptyAtt) {
+                        String stateOrProperty = "aria-" + attLocal;
+                        if (atts.getIndex("", stateOrProperty) > -1) {
+                            String attLocalValue = atts.getValue("", attLocal);
+                            String stateOrPropertyValue = atts.getValue("",
+                                    stateOrProperty);
+                            if ("true".equals(stateOrPropertyValue)
+                                    || attLocalValue.equals(
+                                            stateOrPropertyValue)) {
+                                warn("Attribute \u201C" + stateOrProperty
+                                        + "\u201D is unnecessary for elements"
+                                        + " that have attribute \u201C"
+                                        + attLocal + "\u201D.");
+                            } else if ("false".equals(stateOrPropertyValue)) {
+                                err("Attribute \u201C" + stateOrProperty
+                                        + "\u201D must not be specified on"
+                                        + " elements that have attribute"
+                                        + " \u201C" + attLocal + "\u201D.");
+                            } else if (!attLocalValue.equals(
+                                            stateOrPropertyValue)) {
+                                err("Attribute \u201C" + stateOrProperty
+                                        + "\u201D must not be specified with"
+                                        + " a different value than  attribute"
+                                        + " \u201C" + attLocal + "\u201D.");
+                            }
+                        }
                     }
                     if ("embed".equals(localName)) {
                         for (int j = 0; j < attLocal.length(); j++) {
@@ -1825,11 +1909,12 @@ public class Assertions extends Checker {
                         }
                     } else if ("role" == attLocal) {
                         role = atts.getValue(i);
-                    } else if ("aria-activedescendant" == attLocal) {
+                    } else if ("aria-activedescendant" == attLocal
+                            && !isEmptyAtt) {
                         activeDescendant = atts.getValue(i);
-                    } else if ("aria-label" == attLocal) {
+                    } else if ("aria-label" == attLocal && !isEmptyAtt) {
                         ariaLabel = atts.getValue(i);
-                    } else if ("aria-owns" == attLocal) {
+                    } else if ("aria-owns" == attLocal && !isEmptyAtt) {
                         owns = atts.getValue(i);
                     } else if ("list" == attLocal) {
                         list = atts.getValue(i);
@@ -1903,17 +1988,6 @@ public class Assertions extends Checker {
                                     + " \u201Cautofocus\u201D attribute.");
                         }
                         hasAutofocus = true;
-                    } else if (ATTRIBUTES_WITH_IMPLICIT_STATE_OR_PROPERTY.contains(
-                            attLocal)) {
-                        String stateOrProperty = "aria-" + attLocal;
-                        if (atts.getIndex("", stateOrProperty) > -1
-                                && "true".equals(
-                                        atts.getValue("", stateOrProperty))) {
-                            warn("Attribute \u201C" + stateOrProperty
-                                    + "\u201D is unnecessary for elements that"
-                                    + " have attribute \u201C" + attLocal
-                                    + "\u201D.");
-                        }
                     }
                 } else if ("http://www.w3.org/XML/1998/namespace" == attUri) {
                     if ("lang" == atts.getLocalName(i)) {
@@ -1929,12 +2003,45 @@ public class Assertions extends Checker {
                 }
             }
 
+            if (localName.contains("-")) {
+                isCustomElement = true;
+                if (atts.getIndex("", "is") > -1) {
+                    err("Autonomous custom elements must not specify the"
+                            + " \u201cis\u201d attribute.");
+                }
+                try {
+                    CustomElementName.THE_INSTANCE.checkValid(localName);
+                } catch (DatatypeException e) {
+                    try {
+                        if (getErrorHandler() != null) {
+                            String msg = e.getMessage();
+                            if (e instanceof Html5DatatypeException) {
+                                msg = msg.substring(msg.indexOf(": ") + 2);
+                            }
+                            VnuBadElementNameException ex = new VnuBadElementNameException(
+                                    localName, uri, msg, getDocumentLocator(),
+                                    CustomElementName.class, false);
+                            getErrorHandler().error(ex);
+                        }
+                    } catch (ClassNotFoundException ce) {
+                    }
+                }
+            }
             if ("input".equals(localName)) {
                 if (atts.getIndex("", "name") > -1
                         && "isindex".equals(atts.getValue("", "name"))) {
                     err("The value \u201cisindex\u201d for the \u201cname\u201d"
                             + " attribute of the \u201cinput\u201d element is"
                             + " not allowed.");
+                }
+                if (atts.getIndex("", "hidden") > -1
+                        && ((atts.getIndex("", "aria-hidden") > -1
+                                && !"".equals(atts.getValue("", "aria-hidden")))
+                                || hasAriaAttributesOtherThanAriaHidden)) {
+                    err("An \u201cinput\u201d element with a \u201ctype\u201d"
+                            + " attribute whose value is \u201chidden\u201d"
+                            + " must not have any \u201Caria-*\u201D"
+                            + " attributes.");
                 }
                 inputTypeVal = inputTypeVal == null ? "text" : inputTypeVal;
                 if (atts.getIndex("", "autocomplete") > -1) {
@@ -2135,6 +2242,11 @@ public class Assertions extends Checker {
             }
 
             if ("option" == localName && !parent.hasOption()) {
+                if (atts.getIndex("", "aria-selected") > -1
+                        && !"".equals(atts.getValue("", "aria-selected"))) {
+                    warn("The \u201Caria-selected\u201D attribute should not be"
+                            + " used on the \u201Coption\u201D element.");
+                }
                 if (atts.getIndex("", "value") < 0) {
                     parent.setNoValueOptionFound();
                 } else if (atts.getIndex("", "value") > -1
@@ -2148,8 +2260,12 @@ public class Assertions extends Checker {
 
             // Obsolete elements
             if (OBSOLETE_ELEMENTS.get(localName) != null) {
-                err("The \u201C" + localName + "\u201D element is obsolete. "
-                        + OBSOLETE_ELEMENTS.get(localName));
+                String suggestion = "";
+                if (!"".equals(OBSOLETE_ELEMENTS.get(localName))) {
+                    suggestion = " " + OBSOLETE_ELEMENTS.get(localName);
+                }
+                err("The \u201C" + localName + "\u201D element is obsolete."
+                        + suggestion);
             }
 
             // Exclusions
@@ -2234,8 +2350,18 @@ public class Assertions extends Checker {
                             + "\u201Ca\u201D ancestor with the "
                             + "\u201Chref\u201D attribute.");
                 }
-                if (atts.getIndex("", "alt") < 0 //
-                        && role == null && !hasAriaAttributes) {
+                if (atts.getIndex("", "alt") < 0) {
+                    if (role != null) {
+                        err("An \u201Cimg\u201D element with no \u201Calt\u201D"
+                                + " attribute must not have a"
+                                + " \u201Crole\u201D attribute.");
+                    }
+                    if (hasAriaAttributesOtherThanAriaHidden) {
+                        err("An \u201Cimg\u201D element with no \u201Calt\u201D"
+                                + " attribute must not have any"
+                                + " \u201Caria-*\u201D attributes other than"
+                                + " \u201Caria-hidden\u201D.");
+                    }
                     if ((titleVal == null || "".equals(titleVal))) {
                         if ((ancestorMask & FIGURE_MASK) == 0) {
                             err("An \u201Cimg\u201D element must have an"
@@ -2252,18 +2378,10 @@ public class Assertions extends Checker {
                 } else if (role != null) {
                     if ("".equals(atts.getValue("", "alt"))) {
                         // img with alt="" and role
-                        for (String roleValue : roles) {
-                            if (!("none".equals(roleValue))
-                                    && !("presentation".equals(roleValue))) {
-                                err("An \u201Cimg\u201D element which has an"
-                                        + " \u201Calt\u201D attribute whose"
-                                        + " value is the empty string must not"
-                                        + " have a \u201Crole\u201D attribute"
-                                        + " with any value other than"
-                                        + " \u201Cnone\u201D or"
-                                        + " \u201Cpresentation\u201D");
-                            }
-                        }
+                        err("An \u201Cimg\u201D element which has an"
+                                + " \u201Calt\u201D attribute whose value is"
+                                + " the empty string must not have a"
+                                + " \u201Crole\u201D attribute.");
                     } else {
                         // img with alt="some text" and role
                         for (String roleValue : roles) {
@@ -2277,6 +2395,11 @@ public class Assertions extends Checker {
                     }
                 }
             } else if ("table" == localName) {
+                if (role == null // implicit role=table
+                        || "table".equals(role) || "grid".equals(role)
+                        || "treegrid".equals(role)) {
+                    hasAncestorTableIsRoleTableGridOrTreeGrid = true;
+                }
                 if (atts.getIndex("", "summary") >= 0) {
                     errObsoleteAttribute("summary", "table",
                             " Consider describing the structure of the"
@@ -2291,6 +2414,16 @@ public class Assertions extends Checker {
                     errObsoleteAttribute("border", "table",
                             " Use CSS instead.");
                 }
+            } else if (hasAncestorTableIsRoleTableGridOrTreeGrid
+                    && atts.getIndex("", "role") >= 0 && ("td" == localName
+                            || "tr" == localName || "th" == localName)) {
+                err("The \u201Crole\u201D attribute must not be used"
+                        + " on a \u201C" + localName + "\u201D element"
+                        + " which has a \u201Ctable\u201D ancestor with"
+                        + " no \u201Crole\u201D attribute, or with a"
+                        + " \u201Crole\u201D attribute whose value is"
+                        + " \u201Ctable\u201D, \u201Cgrid\u201D,"
+                        + " or \u201Ctreegrid\u201D.");
             } else if ("track" == localName
                     && atts.getIndex("", "default") >= 0) {
                 for (Map.Entry<StackNode, TaintableLocatorImpl> entry : openMediaElements.entrySet()) {
@@ -2357,6 +2490,18 @@ public class Assertions extends Checker {
                         }
                     }
                 }
+                if (atts.getIndex("", "aria-valuemax") >= 0
+                        && !"".equals(atts.getValue("", "aria-valuemax"))) {
+                    if (atts.getIndex("", "max") >= 0) {
+                        err("The \u201Caria-valuemax\u201D attribute must not"
+                                + " be used on an element which has a"
+                                + " \u201Cmax\u201D attribute.");
+                    } else {
+                        warn("The \u201Caria-valuemax\u201D attribute should"
+                                + " not be used on a \u201Cprogress\u201D"
+                                + " element.");
+                    }
+                }
             }
 
             // meter
@@ -2367,7 +2512,6 @@ public class Assertions extends Checker {
                 double optimum = getDoubleAttribute(atts, "optimum");
                 double low = getDoubleAttribute(atts, "low");
                 double high = getDoubleAttribute(atts, "high");
-
                 if (!Double.isNaN(min) && !Double.isNaN(value)
                         && !(min <= value)) {
                     err("The value of the \u201Cmin\u201D attribute must be less than or equal to the value of the \u201Cvalue\u201D attribute.");
@@ -2438,6 +2582,30 @@ public class Assertions extends Checker {
                 if (!Double.isNaN(optimum) && Double.isNaN(max)
                         && !(optimum <= 1)) {
                     err("The value of the \u201Coptimum\u201D attribute must be less than or equal to one when the \u201Cmax\u201D attribute is absent.");
+                }
+                if (atts.getIndex("", "aria-valuemin") >= 0
+                        && !"".equals(atts.getValue("", "aria-valuemin"))) {
+                    if (atts.getIndex("", "min") >= 0) {
+                        err("The \u201Caria-valuemin\u201D attribute must not"
+                                + " be used on an element which has a"
+                                + " \u201Cmin\u201D attribute.");
+                    } else {
+                        warn("The \u201Caria-valuemin\u201D attribute should"
+                                + " not be used on a \u201Cmeter\u201D"
+                                + " element.");
+                    }
+                }
+                if (atts.getIndex("", "aria-valuemax") >= 0
+                        && !"".equals(atts.getValue("", "aria-valuemax"))) {
+                    if (atts.getIndex("", "max") >= 0) {
+                        err("The \u201Caria-valuemax\u201D attribute must not"
+                                + " be used on an element which has a"
+                                + " \u201Cmax\u201D attribute.");
+                    } else {
+                        warn("The \u201Caria-valuemax\u201D attribute should"
+                                + " not be used on a \u201Cmeter\u201D"
+                                + " element.");
+                    }
                 }
             }
 
@@ -2549,11 +2717,11 @@ public class Assertions extends Checker {
                 if (atts.getIndex("", "type") > -1) {
                     String styleType = atts.getValue("", "type").toLowerCase();
                     if ("text/css".equals(styleType)) {
-                        warn(" The \u201Ctype\u201D attribute for the"
+                        warn("The \u201Ctype\u201D attribute for the"
                                 + " \u201Cstyle\u201D element is not needed and"
                                 + " should be omitted.");
                     } else {
-                        err(" The only allowed value for the \u201Ctype\u201D"
+                        err("The only allowed value for the \u201Ctype\u201D"
                                 + " attribute for the \u201Cstyle\u201D element"
                                 + " is \u201Ctext/css\u201D (with no"
                                 + " parameters). (But the attribute is not"
@@ -2650,7 +2818,8 @@ public class Assertions extends Checker {
                     || "output" == localName //
                     || "progress" == localName //
                     || "select" == localName //
-                    || "textarea" == localName) {
+                    || "textarea" == localName //
+                    || isCustomElement) {
                 formControlIds.addAll(ids);
             }
 
@@ -2669,6 +2838,21 @@ public class Assertions extends Checker {
             if ("input" == localName && list != null) {
                 listReferences.add(new IdrefLocator(
                         new LocatorImpl(getDocumentLocator()), list));
+            }
+
+            // input@type=checkbox
+            if ("input" == localName
+                    && AttributeUtil.lowerCaseLiteralEqualsIgnoreAsciiCaseString(
+                            "checkbox", atts.getValue("", "type"))) {
+                if ("button".equals(role)
+                        && !"true".equals(atts.getValue("", "aria-pressed"))) {
+                    err("An \u201Cinput\u201D element with a \u201Ctype\u201D"
+                            + " attribute whose value is \u201Ccheckbox\u201D"
+                            + " and with a \u201Crole\u201D attribute whose"
+                            + " value is \u201Cbutton\u201D must have an"
+                            + " \u201Caria-pressed\u201D attribute whose value"
+                            + " is \u201Ctrue\u201D.");
+                }
             }
 
             // input@type=button
@@ -2815,21 +2999,30 @@ public class Assertions extends Checker {
                             atts.getValue("", "rel") //
                             .toLowerCase().split("\\s+"));
                 }
-                if (atts.getIndex("", "as") > -1
-                        && ((relList != null //
-                                && !(relList.contains("preload")
-                                        || relList.contains("modulepreload"))
-                                || !hasRel))) {
+                if (relList.contains("preload")
+                        && atts.getIndex("", "as") < 0) {
+                    err("A \u201Clink\u201D element with a"
+                            + " \u201Crel\u201D attribute that contains the"
+                            + " value \u201Cpreload\u201D must have an"
+                            + " \u201Cas\u201D attribute.");
+                }
+                if (atts.getIndex("", "as") > -1 //
+                        && (!(relList.contains("preload")
+                                || relList.contains("modulepreload") //
+                                || relList.contains("prefetch")) //
+                                || !hasRel)) {
                     err("A \u201Clink\u201D element with an"
                             + " \u201Cas\u201D attribute must have a"
                             + " \u201Crel\u201D attribute that contains the"
-                            + " value \u201Cpreload\u201D.");
+                            + " value \u201Cpreload\u201D or the value"
+                            + " \u201Cmodulepreload\u201D or the value"
+                            + " \u201Cprefetch\u201D.");
                 }
                 if (atts.getIndex("", "integrity") > -1
-                        && ((relList != null && !relList.contains("stylesheet")
-                                && !relList.contains("preload")
-                                && !relList.contains("modulepreload")
-                                || !hasRel))) {
+                        && (!(relList.contains("stylesheet")
+                                || relList.contains("preload")
+                                || relList.contains("modulepreload")) //
+                                || !hasRel)) {
                     err("A \u201Clink\u201D element with an"
                             + " \u201Cintegrity\u201D attribute must have a"
                             + " \u201Crel\u201D attribute that contains the"
@@ -2837,10 +3030,19 @@ public class Assertions extends Checker {
                             + " \u201Cpreload\u201D or the value"
                             + " \u201Cmodulepreload\u201D.");
                 }
+                if (atts.getIndex("", "disabled") > -1
+                        && (!relList.contains("stylesheet") //
+                                || !hasRel)) {
+                    err("A \u201Clink\u201D element with a"
+                            + " \u201Cdisabled\u201D attribute must have a"
+                            + " \u201Crel\u201D attribute that contains the"
+                            + " value \u201Cstylesheet\u201D.");
+                }
                 if (atts.getIndex("", "sizes") > -1
-                        && ((relList != null && !relList.contains("icon")
-                                && !relList.contains("apple-touch-icon"))
-                                && !relList.contains("apple-touch-icon-precomposed")
+                        && (!(relList.contains("icon")
+                                || relList.contains("apple-touch-icon")
+                                || relList.contains(
+                                        "apple-touch-icon-precomposed"))
                                 || !hasRel)) {
                     err("A \u201Clink\u201D element with a"
                             + " \u201Csizes\u201D attribute must have a"
@@ -2849,35 +3051,32 @@ public class Assertions extends Checker {
                             + " \u201Capple-touch-icon\u201D or the value"
                             + " \u201Capple-touch-icon-precomposed\u201D.");
                 }
-                if (atts.getIndex("", "color") > -1 //
-                        && (!hasRel || (relList != null
-                                && !relList.contains("mask-icon")))) {
+                if (atts.getIndex("", "color") > -1
+                        && (!relList.contains("mask-icon") //
+                                || !hasRel)) {
                     err("A \u201Clink\u201D element with a"
                             + " \u201Ccolor\u201D attribute must have a"
                             + " \u201Crel\u201D attribute that contains"
                             + " the value \u201Cmask-icon\u201D.");
                 }
-                if (atts.getIndex("", "scope") > -1 //
-                        && ((relList != null
-                                && !relList.contains("serviceworker"))
+                if (atts.getIndex("", "scope") > -1
+                        && (!relList.contains("serviceworker") //
                                 || !hasRel)) {
                     err("A \u201Clink\u201D element with a"
                             + " \u201Cscope\u201D attribute must have a"
                             + " \u201Crel\u201D attribute that contains the"
                             + " value \u201Cserviceworker\u201D.");
                 }
-                if (atts.getIndex("", "updateviacache") > -1 //
-                        && ((relList != null
-                                && !relList.contains("serviceworker"))
+                if (atts.getIndex("", "updateviacache") > -1
+                        && (!relList.contains("serviceworker") //
                                 || !hasRel)) {
                     err("A \u201Clink\u201D element with an"
                             + " \u201Cupdateviacache\u201D attribute must have a"
                             + " \u201Crel\u201D attribute that contains the"
                             + " value \u201Cserviceworker\u201D.");
                 }
-                if (atts.getIndex("", "workertype") > -1 //
-                        && ((relList != null
-                                && !relList.contains("serviceworker"))
+                if (atts.getIndex("", "workertype") > -1
+                        && (!relList.contains("serviceworker") //
                                 || !hasRel)) {
                     err("A \u201Clink\u201D element with a"
                             + " \u201Cworkertype\u201D attribute must have a"
@@ -2923,6 +3122,21 @@ public class Assertions extends Checker {
                 err("The \u201Citemtype\u201D attribute must not be specified on elements that do not have an \u201Citemscope\u201D attribute specified.");
             }
 
+            // Errors for use of ARIA attributes that conflict with native
+            // element semantics.
+            if (atts.getIndex("", "contenteditable") > -1
+                    && "true".equals(atts.getValue("", "aria-readonly"))) {
+                err("The \u201Caria-readonly\u201D attribute must only be"
+                        + " specified with a value of \u201Cfalse\u201D"
+                        + " on elements that have a \u201Ccontenteditable\u201D"
+                        + " attribute.");
+            }
+            if (atts.getIndex("", "aria-placeholder") > -1
+                    && atts.getIndex("", "placeholder") > -1) {
+                err("The \u201Caria-placeholder\u201D attribute must not be"
+                        + " specified on elements that have a"
+                        + " \u201Cplaceholder\u201D attribute.");
+            }
             // Warnings for use of ARIA attributes with markup already
             // having implicit ARIA semantics.
             if (ELEMENTS_WITH_IMPLICIT_ROLE.containsKey(localName)
@@ -2947,6 +3161,53 @@ public class Assertions extends Checker {
                         + " \u201Crole\u201D attribute.");
             } else if ("input" == localName) {
                 inputTypeVal = inputTypeVal == null ? "text" : inputTypeVal;
+                if ("radio".equals(inputTypeVal)
+                        || "checkbox".equals(inputTypeVal)) {
+                    if (atts.getIndex("", "aria-checked") >= 0
+                            && !"".equals(atts.getValue("", "aria-checked"))) {
+                        warn("The \u201Caria-checked\u201D attribute should not"
+                                + " be used on an \u201Cinput\u201D element"
+                                + " which has a \u201Ctype\u201D attribute"
+                                + " whose value is \u201C" + inputTypeVal
+                                + "\u201D.");
+                    }
+                }
+                if ("date".equals(inputTypeVal)
+                        || "month".equals(inputTypeVal)
+                        || "week".equals(inputTypeVal)
+                        || "time".equals(inputTypeVal)
+                        || "datetime-local".equals(inputTypeVal)
+                        || "number".equals(inputTypeVal)
+                        || "range".equals(inputTypeVal)) {
+                    if (atts.getIndex("", "aria-valuemin") >= 0
+                            && !"".equals(atts.getValue("", "aria-valuemin"))) {
+                        if (atts.getIndex("", "min") >= 0) {
+                            err("The \u201Caria-valuemin\u201D attribute must"
+                                    + " not be used on an element which has a"
+                                    + " \u201Cmin\u201D attribute.");
+                        } else {
+                            warn("The \u201Caria-valuemin\u201D attribute"
+                                    + " should not be used on an"
+                                    + " \u201Cinput\u201D element which has a"
+                                    + " \u201Ctype\u201D attribute whose value"
+                                    + " is \u201C" + inputTypeVal + "\u201D.");
+                        }
+                    }
+                    if (atts.getIndex("", "aria-valuemax") >= 0
+                            && !"".equals(atts.getValue("", "aria-valuemax"))) {
+                        if (atts.getIndex("", "max") >= 0) {
+                            err("The \u201Caria-valuemax\u201D attribute must"
+                                    + " not be used on an element which has a"
+                                    + " \u201Cmax\u201D attribute.");
+                        } else {
+                            warn("The \u201Caria-valuemax\u201D attribute"
+                                    + " should not be used on an"
+                                    + " \u201Cinput\u201D element which has a"
+                                    + " \u201Ctype\u201D attribute whose value"
+                                    + " is \u201C" + inputTypeVal + "\u201D.");
+                        }
+                    }
+                }
                 if (INPUT_TYPES_WITH_IMPLICIT_ROLE.containsKey(inputTypeVal)
                         && INPUT_TYPES_WITH_IMPLICIT_ROLE.get(
                                 inputTypeVal).equals(role)) {
@@ -2982,7 +3243,16 @@ public class Assertions extends Checker {
                                     + " whose type is" + " \u201C"
                                     + inputTypeVal + "\u201D.");
                         }
-
+                        if (atts.getIndex("", "aria-haspopup") >= 0
+                                && !"".equals(
+                                        atts.getValue("", "aria-haspopup"))) {
+                            warn("The \u201Caria-haspopup\u201D attribute"
+                                    + " should not be used on an"
+                                    + " \u201Cinput\u201D element that has a"
+                                    + " \u201Clist\u201D attribute and whose"
+                                    + " type is \u201C" + inputTypeVal
+                                    + "\u201D.");
+                        }
                     }
                 }
             } else if (atts.getIndex("", "href") > -1 && "link".equals(role)
@@ -3028,6 +3298,7 @@ public class Assertions extends Checker {
         } else {
             int len = atts.getLength();
             for (int i = 0; i < len; i++) {
+                boolean isEmptyAtt = !"".equals(atts.getValue(i));
                 if (atts.getType(i) == "ID") {
                     String attVal = atts.getValue(i);
                     if (attVal.length() != 0) {
@@ -3038,9 +3309,11 @@ public class Assertions extends Checker {
                 if (atts.getURI(i).length() == 0) {
                     if ("role" == attLocal) {
                         role = atts.getValue(i);
-                    } else if ("aria-activedescendant" == attLocal) {
+                    } else if ("aria-activedescendant" == attLocal
+                            && !isEmptyAtt) {
+                        System.out.println("found aria-activedescendant 1");
                         activeDescendant = atts.getValue(i);
-                    } else if ("aria-owns" == attLocal) {
+                    } else if ("aria-owns" == attLocal && !isEmptyAtt) {
                         owns = atts.getValue(i);
                     }
                 }
@@ -3070,7 +3343,7 @@ public class Assertions extends Checker {
         // ARIA IDREFS
         for (String att : MUST_NOT_DANGLE_IDREFS) {
             String attVal = atts.getValue("", att);
-            if (attVal != null) {
+            if (attVal != null && attVal != "") {
                 String[] tokens = AttributeUtil.split(attVal);
                 for (String token : tokens) {
                     ariaReferences.add(
@@ -3120,8 +3393,16 @@ public class Assertions extends Checker {
             if (number > -1) {
                 ancestorMask |= (1 << number);
             }
-            if ("a" == localName && href) {
-                ancestorMask |= HREF_MASK;
+            if ("a" == localName) {
+                if (href) {
+                    ancestorMask |= HREF_MASK;
+                    if ("true".equals(atts.getValue("", "aria-disabled"))) {
+                        warn("An \u201Caria-disabled\u201D attribute whose"
+                                + " value is \u201Ctrue\u201D should not be"
+                                + " specified on an \u201Ca\u201D element"
+                                + " that has an \u201Chref\u201D attribute.");
+                    }
+                }
             }
             StackNode child = new StackNode(ancestorMask, localName, role,
                     activeDescendant, forAttr);
@@ -3156,6 +3437,11 @@ public class Assertions extends Checker {
                 boolean sizeIsOne = false;
                 boolean sizeIsGreaterThanOne = false;
                 boolean hasMultiple = atts.getIndex("", "multiple") > -1;
+                if (atts.getIndex("", "aria-multiselectable") > -1) {
+                    warn("The \u201Caria-multiselectable\u201D attribute"
+                            + " should not be used with the \u201Cselect"
+                            + " \u201D element.");
+                }
                 if (atts.getIndex("", "size") > -1) {
                     hasSize = true;
                     String size = trimSpaces(atts.getValue("", "size"));
@@ -3223,29 +3509,6 @@ public class Assertions extends Checker {
                     }
                 } else {
                         // ARIA
-                }
-            }
-            if (localName.contains("-")) {
-                if (atts.getIndex("", "is") > -1) {
-                    err("Autonomous custom elements must not specify the"
-                            + " \u201cis\u201d attribute.");
-                }
-                try {
-                    CustomElementName.THE_INSTANCE.checkValid(localName);
-                } catch (DatatypeException e) {
-                    try {
-                        if (getErrorHandler() != null) {
-                            String msg = e.getMessage();
-                            if (e instanceof Html5DatatypeException) {
-                                msg = msg.substring(msg.indexOf(": ") + 2);
-                            }
-                            VnuBadElementNameException ex = new VnuBadElementNameException(
-                                    localName, uri, msg, getDocumentLocator(),
-                                    CustomElementName.class, false);
-                            getErrorHandler().error(ex);
-                        }
-                    } catch (ClassNotFoundException ce) {
-                    }
                 }
             }
         } else if ("http://n.validator.nu/custom-elements/" == uri) {

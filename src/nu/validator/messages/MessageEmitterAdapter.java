@@ -390,6 +390,31 @@ public class MessageEmitterAdapter implements ErrorHandler {
             // (non-)errors for features the CSS checker doesn’t support yet
             ".*Unknown pseudo-element or pseudo-class \u201C:focus-within\u201D.*", //
             ".*leader(.+)is not a \u201Ccontent\u201D value.*", //
+            ".*“button” is not a “appearance” value.*", //
+            ".*“textfield” is not a “appearance” value.*", //
+            ".*“text” is not a “background-clip” value.*", //
+            ".*“conic-gradient[^”]+” is not a “background-color” value.*", //
+            ".*“woff” is not a “format” value.*", //
+            ".*“truetype” is not a “format” value.*", //
+            ".*“opentype” is not a “format” value.*", //
+            ".*“woff2” is not a “format” value.*", //
+            ".*“embedded-opentype” is not a “format” value.*", //
+            ".*“collection” is not a “format” value.*", //
+            ".*“svg” is not a “format” value.*", //
+            ".*Property “all” doesn't exist.*", //
+            ".*Property “aspect-ratio” doesn't exist.*", //
+            ".*Property “border-block-width” doesn't exist.*", //
+            ".*Property “backdrop-filter” doesn't exist.*", //
+            ".*Property “font-variation-settings” doesn't exist.*", //
+            ".*Property “margin-block-start” doesn't exist.*", //
+            ".*Property “overflow-anchor” doesn't exist.*", //
+            ".*Property “padding-inline-start” doesn't exist.*", //
+            ".*Property “scale” doesn't exist.*", //
+            ".*Property “text-decoration-thickness” doesn't exist.*", //
+            ".*Property “text-decoration-skip-ink” doesn't exist.*", //
+            ".*Property “text-underline-offset” doesn't exist.*", //
+            ".*“.+(em|px)” is not a “text-decoration” value.*", //
+            ".*“text-decoration”: “.+(em|px)” is not a “color” value.*", //
     };
 
     protected static final Pattern DEFAULT_FILTER_PATTERN = Pattern.compile(

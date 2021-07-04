@@ -40,10 +40,12 @@
 			|	common.attrs.aria.role.doc-credits
 			|	common.attrs.aria.role.doc-dedication
 			|	common.attrs.aria.role.doc-endnotes
+			|	common.attrs.aria.role.doc-epigraph
 			|	common.attrs.aria.role.doc-epilogue
 			|	common.attrs.aria.role.doc-errata
 			|	common.attrs.aria.role.doc-example
 			|	common.attrs.aria.role.doc-foreword
+			|	common.attrs.aria.role.doc-glossary
 			|	common.attrs.aria.role.doc-index
 			|	common.attrs.aria.role.doc-introduction
 			|	common.attrs.aria.role.doc-notice
@@ -72,6 +74,9 @@
 			|	common.attrs.aria.role.doc-index
 			|	common.attrs.aria.role.doc-pagelist
 			|	common.attrs.aria.role.doc-toc
+			|	common.attrs.aria.role.menu
+			|	common.attrs.aria.role.menubar
+			|	common.attrs.aria.role.tablist
 			)?
 		)
 	nav.inner =
@@ -114,6 +119,7 @@
 			|	common.attrs.aria.role.feed
 			|	common.attrs.aria.role.region
 			|	common.attrs.aria.role.presentation
+			|	common.attrs.aria.role.doc-dedication
 			|	common.attrs.aria.role.doc-example
 			|	common.attrs.aria.role.doc-footnote
 			|	common.attrs.aria.role.doc-pullquote

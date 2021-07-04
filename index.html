@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf-8>
+<!doctype html><html lang=en-US><head><meta charset=utf-8>
 <title>The Nu Html Checker (v.Nu)</title>
 <link href="site/icon.png" rel="icon">
 <style>
@@ -138,9 +138,11 @@ li > ul {
 <body>
   <h1>The Nu Html Checker (v.Nu)
     <a href="https://gitter.im/validator/validator"
-    ><img src="https://goo.gl/1kHqwI" alt="Chat room"></a>
+    ><img src="https://img.shields.io/badge/gitter-chat%20%E2%86%92-brightgreen.svg"
+      alt="Chat room"></a>
     <a href="https://github.com/validator/validator/releases/latest"
-    ><img src="https://goo.gl/3PC2Qn" alt="Download latest"></a>
+    ><img src="https://img.shields.io/badge/download-latest%20%E2%86%92-blue.svg"
+      alt="Download latest"></a>
   </h1>
     <p>
     The Nu Html Checker (v.Nu) helps you <a
@@ -164,7 +166,7 @@ li > ul {
     <a href="https://www.npmjs.com/package/vnu-jar">npm</a>,
     <a href="https://github.com/svenkreiss/html5validator">pip</a>,
     and
-    <a href="https://libraries.io/homebrew/vnu">brew</a>
+    <a href="https://formulae.brew.sh/formula/vnu">brew</a>
     packages of it are also available.
 
     <p>It is released upstream in these formats:
@@ -203,6 +205,8 @@ li > ul {
 <a href="https://github.com/validator/grunt-html">Grunt plugin for HTML validation</a>
 or
 <a href="https://github.com/validator/gulp-html">Gulp plugin for HTML validation</a>
+or
+<a href="https://github.com/validator/maven-plugin">Maven plugin for HTML validation</a>
 <li>
 <a href="https://github.com/svenkreiss/html5validator">html5validator <code>pip</code> package</a>
 (for HTML checking integration in Travis CI, CircleCI, CodeShip, Jekyll,
@@ -234,7 +238,7 @@ Run the checker with one of the following invocations:
 <i><code>OPTIONS</code></i> are zero or more of the following options:
 
 <pre>
---errors-only --Werror --exit-zero-always
+--errors-only --Werror --exit-zero-always --stdout
 --asciiquotes --user-agent USER_AGENT --no-langdetect
 --no-stream --filterfile FILENAME --filterpattern PATTERN
 --css --skip-non-css --also-check-css
@@ -260,13 +264,13 @@ environment variable, you can invoke the checker with just
 
 <p>To check one or more documents from the command line:
 <pre>
-  vnu-runtime-image/bin/vnu      FILE.html FILE2.html FILE3.HTML...
+  vnu-runtime-image/bin/vnu      FILE.html FILE2.html FILE3.html...
 </pre>
 <pre>
-  vnu-runtime-image\bin\vnu.bat  FILE.html FILE2.html FILE3.HTML...
+  vnu-runtime-image\bin\vnu.bat  FILE.html FILE2.html FILE3.html...
 </pre>
 <pre>
-  java -jar ~/vnu.jar            FILE.html FILE2.html FILE3.HTML...
+  java -jar ~/vnu.jar            FILE.html FILE2.html FILE3.html...
 </pre>
 
 <div class=note>
@@ -400,6 +404,13 @@ default: [unset; checker exits zero if only warnings are encountered]
 Makes the checker exit zero even if errors are reported for any documents.
 
 default: [unset; checker exits 1 if errors are reported for any documents]
+</pre>
+
+<h4 id="stdout">--stdout</h4>
+<pre>
+Makes the checker report errors and warnings to stdout rather than stderr.
+
+default: [unset; checker reports errors and warnings to stderr]
 </pre>
 
 <h4 id="filterfile">--filterfile <var>FILENAME</var></h4>
@@ -543,12 +554,9 @@ Shows the checker version number.
   <p>The Nu Html Checker — along with being usable as
   <a href="https://validator.github.io/validator/#usage">a standalone command-line client</a> — can
   be run as an HTTP service, similar to
-  <a href="https://checker.html5.org/">checker.html5.org</a>,
-  <a href="https://html5.validator.nu/">html5.validator.nu</a>,
-  and
   <a href="https://validator.w3.org/nu/">validator.w3.org/nu</a>,
-  for browser-based checking of HTML documents over
-  the Web.
+  for browser-based checking of HTML documents, CSS stylesheets, and SVG
+  images over the Web.
   To that end, the checker is released as several separate packages:
   <ul>
   <li>Linux, Windows, and macOS binaries for
@@ -560,8 +568,8 @@ Shows the checker version number.
   </ul>
   <p>
   All deployments expose a REST API that enables checking of HTML
-  documents from other clients, not just web browsers. And the
-  Linux, Windows, and macOS binaries and
+  documents, CSS stylesheets, and SVG images from other clients, not just
+  web browsers. And the Linux, Windows, and macOS binaries and
   <code>vnu.jar</code> package also include
   <a href="#http-client">a simple HTTP client</a> that enables you to
   either send documents to a locally-running instance of the checker HTTP
@@ -640,8 +648,8 @@ checker to a different address:
     <code>nu.validator.servlet.bind-address</code> value you’re using),
     you’ll see a form similar to <a
     href="https://validator.w3.org/nu/">validator.w3.org/nu</a> that allows
-    you to enter the URL of an HTML document and have the results for that
-    document displayed in the browser.
+    you to enter the URL of an HTML document, CSS stylesheet, or SVG image,
+    and have the results of checking that resource displayed in the browser.
 
 <div class=note>
 <p><b>Note:</b> If you get a <code>StackOverflowError</code>

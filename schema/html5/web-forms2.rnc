@@ -87,6 +87,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-form.attrs.minlength?
 		&	shared-form.attrs.pattern?
 		&	shared-form.attrs.placeholder?
+		&	aria.prop.placeholder?
 		&	shared-form.attrs.readonly?
 		&	shared-form.attrs.required?
 		)
@@ -97,6 +98,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-form.attrs.minlength?
 		&	shared-form.attrs.pattern?
 		&	shared-form.attrs.placeholder?
+		&	aria.prop.placeholder?
 		&	shared-form.attrs.readonly?
 		&	shared-form.attrs.required?
 		&	shared-form.attrs.size?
@@ -155,6 +157,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-form.attrs.pattern?
 		&	shared-form.attrs.required?
 		&	shared-form.attrs.placeholder?
+		&	aria.prop.placeholder?
 		&	shared-form.attrs.minlength?
 		)
 
@@ -165,6 +168,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	input.attrs.list?
 		&	shared-form.attrs.pattern?
 		&	shared-form.attrs.placeholder?
+		&	aria.prop.placeholder?
 		&	shared-form.attrs.required?
 		&	aria.prop.required?
 		&	shared-form.attrs.minlength?
@@ -210,6 +214,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 	input.file.attrs &=
 		(	shared-input.attrs
 		&	input.attrs.multiple?
+		&	aria.prop.required?
 		&	input.input.attrs.capture?
 		)
 		input.input.attrs.capture =
@@ -248,8 +253,11 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-input.attrs
 		&	input.datetime-local.attrs.type
 		&	input.datetime-local.attrs.min?
+		&	aria.prop.valuemin?
 		&	input.datetime-local.attrs.max?
+		&	aria.prop.valuemax?
 		&	input.attrs.step.float?
+		&	aria.prop.required?
 		&	input.datetime-local.attrs.value?
 		)	
 		input.datetime-local.attrs.type = 
@@ -281,7 +289,10 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-input.attrs
 		&	input.date.attrs.type
 		&	input.date.attrs.min?
+		&	aria.prop.valuemin?
 		&	input.date.attrs.max?
+		&	aria.prop.valuemax?
+		&	aria.prop.required?
 		&	input.attrs.step.integer?
 		&	input.date.attrs.value?
 		)	
@@ -314,7 +325,10 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-input.attrs
 		&	input.month.attrs.type
 		&	input.month.attrs.min?
+		&	aria.prop.valuemin?
 		&	input.month.attrs.max?
+		&	aria.prop.valuemax?
+		&	aria.prop.required?
 		&	input.attrs.step.integer?
 		&	input.month.attrs.value?
 		)	
@@ -347,7 +361,10 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-input.attrs
 		&	input.time.attrs.type
 		&	input.time.attrs.min?
+		&	aria.prop.valuemin?
 		&	input.time.attrs.max?
+		&	aria.prop.valuemax?
+		&	aria.prop.required?
 		&	input.attrs.step.float?
 		&	input.time.attrs.value?
 		)	
@@ -380,7 +397,10 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-input.attrs
 		&	input.week.attrs.type
 		&	input.week.attrs.min?
+		&	aria.prop.valuemin?
 		&	input.week.attrs.max?
+		&	aria.prop.valuemax?
+		&	aria.prop.required?
 		&	input.attrs.step.integer?
 		&	input.week.attrs.value?
 		)	
@@ -660,6 +680,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	shared-form.attrs.minlength?
 		&	shared-form.attrs.required? 
 		&	textarea.attrs.placeholder?
+		&	aria.prop.placeholder?
 		&	shared-form.attrs.dirname?
 		&	textarea.attrs.rows?
 		&	(	(	textarea.attrs.wrap.hard 

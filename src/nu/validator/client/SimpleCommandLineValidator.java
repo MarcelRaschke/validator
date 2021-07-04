@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.jar.Manifest;
@@ -65,6 +66,8 @@ public class SimpleCommandLineValidator {
     private static SimpleDocumentValidator validator;
 
     private static OutputStream out;
+
+    private static PrintStream otherOut;
 
     private static Pattern filterPattern;
 
@@ -126,6 +129,7 @@ public class SimpleCommandLineValidator {
             }
         }
         out = System.err;
+        otherOut = System.out;
         userAgent = "Validator.nu/LV";
         System.setProperty("nu.validator.datatype.warn", "true");
         errorsOnly = false;
@@ -176,6 +180,9 @@ public class SimpleCommandLineValidator {
                     wError = true;
                 } else if ("--exit-zero-always".equals(args[i])) {
                     exitZeroAlways = true;
+                } else if ("--stdout".equals(args[i])) {
+                    out = System.out;
+                    otherOut = System.err;
                 } else if ("--asciiquotes".equals(args[i])) {
                     asciiQuotes = true;
                 } else if ("--filterfile".equals(args[i])) {
@@ -221,9 +228,9 @@ public class SimpleCommandLineValidator {
                     userAgent = args[++i];
                 } else if ("--version".equals(args[i])) {
                     if (version != null) {
-                        System.out.println(version);
+                        otherOut.println(version);
                     } else {
-                        System.out.println("[unknown version]");
+                        otherOut.println("[unknown version]");
                     }
                     System.exit(0);
                 } else if ("--help".equals(args[i])) {
@@ -323,16 +330,16 @@ public class SimpleCommandLineValidator {
         try {
             validator.setUpMainSchema(schemaUrl, new SystemErrErrorHandler());
         } catch (SchemaReadException e) {
-            System.out.println(e.getMessage() + " Terminating.");
+            otherOut.println(e.getMessage() + " Terminating.");
             System.exit(1);
         } catch (StackOverflowError e) {
-            System.out.println("StackOverflowError"
+            otherOut.println("StackOverflowError"
                     + " while evaluating HTML schema.");
-            System.out.println("The checker requires a java thread stack size"
+            otherOut.println("The checker requires a java thread stack size"
                     + " of at least 512k.");
-            System.out.println("Consider invoking java with the -Xss"
+            otherOut.println("Consider invoking java with the -Xss"
                     + " option. For example:");
-            System.out.println("\n  java -Xss512k -jar ~/vnu.jar FILE.html");
+            otherOut.println("\n  java -Xss512k -jar ~/vnu.jar FILE.html");
             System.exit(1);
         }
         validator.setUpValidatorAndParsers(errorHandler, noStream, loadEntities);
@@ -366,6 +373,20 @@ public class SimpleCommandLineValidator {
                 try {
                     validator.checkHttpURL(args[i], userAgent, errorHandler);
                 } catch (IOException e) {
+                    if (e.getCause() instanceof //
+                            org.apache.http.TruncatedChunkException) {
+                        continue;
+                    } else if (e.getCause() instanceof //
+                            org.apache.http.MalformedChunkCodingException
+                            && (e.getMessage().contains(
+                                    "CRLF expected at end of chunk"))) {
+                        continue;
+                    } else if (e.getCause() instanceof //
+                            org.apache.http.ConnectionClosedException
+                            && (e.getMessage().contains(
+                                    "closing chunk expected"))) {
+                        continue;
+                    }
                     errorHandler.fatalError(new SAXParseException(e.getMessage(),
                             null, args[i], -1, -1,
                             new SystemIdIOException(args[i], e.getMessage())));
@@ -436,6 +457,10 @@ public class SimpleCommandLineValidator {
     }
 
     private static void checkSvgFile(File file) throws IOException, Exception {
+        if (!"http://s.validator.nu/svg-xhtml5-rdf-mathml.rnc".equals(
+                validator.getMainSchemaUrl()) && !hasSchemaOption) {
+            setSchema("http://s.validator.nu/svg-xhtml5-rdf-mathml.rnc");
+        }
         try {
             String path = file.getPath();
             if (!file.exists()) {
@@ -447,6 +472,7 @@ public class SimpleCommandLineValidator {
                 return;
             } else {
                 emitFilename(path);
+                validator.checkXmlFile(file);
             }
         } catch (SAXException e) {
             if (!errorsOnly) {
@@ -548,7 +574,7 @@ public class SimpleCommandLineValidator {
 
     private static void emitFilename(String name) {
         if (verbose) {
-            System.out.println(name);
+            otherOut.println(name);
         }
     }
 
@@ -582,49 +608,49 @@ public class SimpleCommandLineValidator {
     }
 
     private static void usage() {
-        System.out.println("Usage:");
-        System.out.println("");
-        System.out.println("    vnu-runtime-image/bin/vnu OPTIONS FILES (Linux or macOS)");
-        System.out.println("    vnu-runtime-image\\bin\\vnu.bat OPTIONS FILES (Windows)");
-        System.out.println("    java -jar ~/vnu.jar OPTIONS FILES (any system with Java8+ installed)");
-        System.out.println("");
-        System.out.println("...where FILES are the documents to check, and OPTIONS are zero or more of:");
-        System.out.println("");
-        System.out.println("    --errors-only --Werror --exit-zero-always --asciiquotes");
-        System.out.println("    --user-agent USER_AGENT --no-langdetect --no-stream --filterfile FILENAME");
-        System.out.println("    --filterpattern PATTERN --css --skip-non-css --also-check-css --svg");
-        System.out.println("    --skip-non-svg --also-check-svg --html --skip-non-html");
-        System.out.println("    --format gnu|xml|json|text --help --verbose --version");
-        System.out.println("");
-        System.out.println("For detailed usage information, try the \"--help\" option or see:");
-        System.out.println("");
-        System.out.println("  http://validator.github.io/");
-        System.out.println("");
-        System.out.println("To read from stdin, use \"-\" as the filename, like this: \"java -jar vnu.jar - \".");
-        System.out.println("");
-        System.out.println("To run the checker as a standalone Web-based service, open a new terminal");
-        System.out.println("window and invoke the checker like this");
-        System.out.println("");
-        System.out.println("    java -cp vnu.jar nu.validator.servlet.Main 8888");
-        System.out.println("    vnu-runtime-image/bin/java nu.validator.servlet.Main 8888");
-        System.out.println("    vnu-runtime-image\\bin\\java -cp vnu.jar nu.validator.servlet.Main 8888");
-        System.out.println("");
-        System.out.println("...then open http://127.0.0.1:8888 in a browser.");
-        System.out.println("");
-        System.out.println("After that, to check documents locally using the packaged HTTP client, do this:");
-        System.out.println("");
-        System.out.println("    java -cp vnu.jar nu.validator.client.HttpClient FILES");
-        System.out.println("    vnu-runtime-image/bin/java nu.validator.client.HttpClient FILES");
-        System.out.println("    vnu-runtime-image\\bin\\java nu.validator.client.HttpClient FILES");
-        System.out.println("");
+        otherOut.println("Usage:");
+        otherOut.println("");
+        otherOut.println("    vnu-runtime-image/bin/vnu OPTIONS FILES (Linux or macOS)");
+        otherOut.println("    vnu-runtime-image\\bin\\vnu.bat OPTIONS FILES (Windows)");
+        otherOut.println("    java -jar ~/vnu.jar OPTIONS FILES (any system with Java8+ installed)");
+        otherOut.println("");
+        otherOut.println("...where FILES are the documents to check, and OPTIONS are zero or more of:");
+        otherOut.println("");
+        otherOut.println("    --errors-only --Werror --exit-zero-always --stdout --asciiquotes");
+        otherOut.println("    --user-agent USER_AGENT --no-langdetect --no-stream --filterfile FILENAME");
+        otherOut.println("    --filterpattern PATTERN --css --skip-non-css --also-check-css --svg");
+        otherOut.println("    --skip-non-svg --also-check-svg --html --skip-non-html");
+        otherOut.println("    --format gnu|xml|json|text --help --verbose --version");
+        otherOut.println("");
+        otherOut.println("For detailed usage information, try the \"--help\" option or see:");
+        otherOut.println("");
+        otherOut.println("  http://validator.github.io/");
+        otherOut.println("");
+        otherOut.println("To read from stdin, use \"-\" as the filename, like this: \"java -jar vnu.jar - \".");
+        otherOut.println("");
+        otherOut.println("To run the checker as a standalone Web-based service, open a new terminal");
+        otherOut.println("window and invoke the checker like this");
+        otherOut.println("");
+        otherOut.println("    java -cp vnu.jar nu.validator.servlet.Main 8888");
+        otherOut.println("    vnu-runtime-image/bin/java nu.validator.servlet.Main 8888");
+        otherOut.println("    vnu-runtime-image\\bin\\java -cp vnu.jar nu.validator.servlet.Main 8888");
+        otherOut.println("");
+        otherOut.println("...then open http://127.0.0.1:8888 in a browser.");
+        otherOut.println("");
+        otherOut.println("After that, to check documents locally using the packaged HTTP client, do this:");
+        otherOut.println("");
+        otherOut.println("    java -cp vnu.jar nu.validator.client.HttpClient FILES");
+        otherOut.println("    vnu-runtime-image/bin/java nu.validator.client.HttpClient FILES");
+        otherOut.println("    vnu-runtime-image\\bin\\java nu.validator.client.HttpClient FILES");
+        otherOut.println("");
     }
 
     private static void help() {
         try (InputStream help = SimpleCommandLineValidator.class.getClassLoader().getResourceAsStream(
                 "nu/validator/localentities/files/cli-help")) {
-            System.out.println("");
+            otherOut.println("");
             for (int b = help.read(); b != -1; b = help.read()) {
-                System.out.write(b);
+                otherOut.write(b);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

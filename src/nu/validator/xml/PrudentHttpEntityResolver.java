@@ -30,6 +30,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.zip.GZIPInputStream;
 
 import javax.net.ssl.HostnameVerifier;
@@ -49,6 +51,7 @@ import nu.validator.io.SystemIdIOException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
@@ -108,6 +111,19 @@ import io.mola.galimatias.GalimatiasParseException;
     private boolean allowGenericXml = true;
 
     private final ContentTypeParser contentTypeParser;
+
+    private static final List<String> FORBIDDEN_HOSTS = Arrays.asList( //
+            "localhost", //
+            "127.0.0.1", //
+            "0.0.0.0", //
+            "[::1]", //
+            "[0:0:0:0:0:0:0:1]", //
+            "[0000:0000:0000:0000:0000:0000:0000:0001]", //
+            "[::]", //
+            "[::0]", //
+            "[0000:0000:0000:0000:0000:0000:0000:0000]", //
+            "[0:0:0:0:0:0:0:0]" //
+    );
 
     private String userAgent;
 
@@ -256,9 +272,17 @@ import io.mola.galimatias.GalimatiasParseException;
                 }
                 throw spe;
             }
+            if (FORBIDDEN_HOSTS.contains(url.host().toHostString())) {
+                throw new IOException( "Forbidden host.");
+            }
+            if (url.port() != 80 && url.port() != 81 && url.port() != 443
+                    && url.port() < 1024) {
+                throw new IOException("Forbidden port.");
+            }
             m.setHeader("User-Agent", userAgent);
             m.setHeader("Accept", buildAccept());
             m.setHeader("Accept-Encoding", "gzip");
+            m.setProtocolVersion(HttpVersion.HTTP_1_0);
             if (request != null && request.getAttribute(
                     "http://validator.nu/properties/accept-language") != null) {
                 m.setHeader("Accept-Language", (String) request.getAttribute(

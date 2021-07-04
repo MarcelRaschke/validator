@@ -152,6 +152,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 		&	referrerpolicy?
 		&	link.attrs.sizes?
 		&	link.attrs.color?
+		&	link.attrs.disabled?
 		&	link.attrs.scope?
 		&	link.attrs.updateviacache?
 		&	link.attrs.workertype?
@@ -174,6 +175,7 @@ datatypes w = "http://whattf.org/datatype-draft"
 			|	string "audioworklet"
 			|	string "document"
 			|	string "embed"
+			|	string "fetch"
 			|	string "font"
 			|	string "image"
 			|	string "manifest"
@@ -200,6 +202,10 @@ datatypes w = "http://whattf.org/datatype-draft"
 		link.attrs.color =
 			attribute color {
 				common.data.color
+			}
+		link.attrs.disabled =
+			attribute disabled {
+				w:string "disabled" | w:string ""
 			}
 		link.attrs.scope =
 			attribute scope {
